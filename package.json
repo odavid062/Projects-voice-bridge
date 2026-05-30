@@ -1,0 +1,19 @@
+{
+  "name": "voice-bridge",
+  "version": "1.0.0",
+  "description": "WaVoIP SIP + OpenAI Realtime — bridge local para agente de voz",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "dotenv": "^16.4.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
