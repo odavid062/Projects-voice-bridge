@@ -63,17 +63,21 @@ SIP_USERNAME=seu-usuario-wavoip
 SIP_PASSWORD=sua-senha-wavoip
 LOCAL_IP=seu-ip-publico
 
-# Google Gemini Live
+# Google Gemini Live (modo primário)
 GEMINI_API_KEY=sua-chave-gemini
 
-# OpenAI (pipeline fallback, opcional)
+# OpenAI (pipeline fallback se não houver Gemini, opcional)
 OPENAI_API_KEY=sua-chave-openai
 
 # Groq (STT rápido no fallback, opcional)
 GROQ_API_KEY=sua-chave-groq
 
 # Servidor HTTP
-PORT=3000
+HTTP_PORT=3000
+
+# Prompts e Integrações (opcionais)
+DEFAULT_SYSTEM_PROMPT=seu-prompt-padrao
+N8N_WEBHOOK_URL=https://seu-n8n.com/webhook/voice-bridge-result
 ```
 
 ## Uso
@@ -93,6 +97,7 @@ curl -X POST http://localhost:3000/call \
   -H "Content-Type: application/json" \
   -d '{
     "to": "5562999999999",
+    "leadContext": "Nome: João. Interesse: automação WhatsApp.",
     "systemPrompt": "Você é a Juliana, atendente da imobiliária Criáte..."
   }'
 ```
@@ -101,15 +106,17 @@ curl -X POST http://localhost:3000/call \
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `to` | string | Número de destino (formato E.164 sem +) |
-| `systemPrompt` | string | Prompt do agente (opcional — usa prompt padrão se omitido) |
+| `to` | string | Número de destino (formato E.164 sem +, ex: `5562999999999`) |
+| `leadContext` | string | Informações de contexto sobre o lead/cliente (opcional, concatenado ao prompt) |
+| `systemPrompt` | string | Prompt do agente (opcional — usa `DEFAULT_SYSTEM_PROMPT` ou o prompt padrão da Juliana se omitido) |
 
 **Resposta:**
 
 ```json
 {
+  "ok": true,
   "callId": "uuid-da-chamada",
-  "status": "calling"
+  "to": "5562999999999"
 }
 ```
 
@@ -119,10 +126,68 @@ curl -X POST http://localhost:3000/call \
 curl -X DELETE http://localhost:3000/call/{callId}
 ```
 
+**Resposta:**
+
+```json
+{
+  "ok": true
+}
+```
+
 ### Status
 
 ```bash
-curl http://localhost:3000/status
+curl http://localhost:3000/health
+```
+
+**Resposta:**
+
+```json
+{
+  "status": "ok",
+  "registered": true,
+  "activeCalls": 0,
+  "aiMode": "gemini-live",
+  "uptime": 123.45
+}
+```
+
+### Listar chamadas ativas
+
+```bash
+curl http://localhost:3000/calls
+```
+
+**Resposta:**
+
+```json
+{
+  "activeCalls": 1,
+  "calls": [
+    {
+      "callId": "uuid-da-chamada",
+      "startedAt": "2026-10-15T10:30:00.000Z",
+      "duration": 45
+    }
+  ]
+}
+```
+
+### Notificação pós-chamada (Webhook n8n)
+
+Se `N8N_WEBHOOK_URL` estiver configurada no `.env`, ao finalizar a chamada o servidor faz um POST com o relatório e transcrição completa:
+
+```json
+{
+  "callId": "uuid-da-chamada",
+  "reason": "sip_bye",
+  "duration": 45,
+  "transcript": [
+    { "role": "ai", "text": "Oi, boa tarde!", "ts": "2026-10-15T10:30:05.123Z" },
+    { "role": "user", "text": "Boa tarde, quem fala?", "ts": "2026-10-15T10:30:08.456Z" }
+  ],
+  "startedAt": "2026-10-15T10:30:00.000Z"
+}
 ```
 
 ## Estrutura do projeto
